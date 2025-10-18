@@ -7,8 +7,31 @@ import { DataTableView } from "./canvas/DataTableView";
 
 type ViewType = "map" | "analytics" | "table";
 
+// Example heatmap data - this would come from the Co-pilot in production
+const exampleHeatmapData = {
+  type: "FeatureCollection" as const,
+  features: [
+    {
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [-74.006, 40.7128] as [number, number] },
+      properties: { value: -84.2, color: "#00FF00" },
+    },
+    {
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [-73.9851, 40.7589] as [number, number] },
+      properties: { value: -97.6, color: "#FFA500" },
+    },
+    {
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [-73.9352, 40.7306] as [number, number] },
+      properties: { value: -115.1, color: "#FF0000" },
+    },
+  ],
+};
+
 export const CanvasView = () => {
   const [activeView, setActiveView] = useState<ViewType>("map");
+  const [heatmapData, setHeatmapData] = useState<typeof exampleHeatmapData | undefined>(undefined);
 
   const views = [
     { id: "map" as ViewType, label: "Geospatial", icon: Map },
@@ -39,7 +62,7 @@ export const CanvasView = () => {
 
       {/* Content Area */}
       <div className="flex-1 overflow-hidden">
-        {activeView === "map" && <MapView />}
+        {activeView === "map" && <MapView heatmapData={heatmapData} kpiName="RSRP Signal Strength" />}
         {activeView === "analytics" && <AnalyticsView />}
         {activeView === "table" && <DataTableView />}
       </div>

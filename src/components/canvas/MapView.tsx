@@ -1,105 +1,294 @@
-import { MapPin, Navigation, Zap, AlertCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { MapPin, Zap, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
-export const MapView = () => {
+interface HeatmapData {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    geometry: {
+      type: "Point";
+      coordinates: [number, number];
+    };
+    properties: {
+      value: number;
+      color: string;
+    };
+  }>;
+}
+
+interface MapViewProps {
+  heatmapData?: HeatmapData;
+  kpiName?: string;
+}
+
+export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const popup = useRef<mapboxgl.Popup | null>(null);
+  const [mapboxToken, setMapboxToken] = useState("");
+  const [isTokenSet, setIsTokenSet] = useState(false);
+
+  // Static cell data for display when no heatmap
   const cells = [
-    { id: "Cell-123", lat: "40.7128", lng: "-74.0060", status: "optimal", load: 45 },
-    { id: "Cell-456", lat: "40.7589", lng: "-73.9851", status: "degraded", load: 87 },
-    { id: "Cell-789", lat: "40.7306", lng: "-73.9352", status: "critical", load: 92 },
+    { id: "Cell-123", lat: 40.7128, lng: -74.0060, status: "optimal", load: 45 },
+    { id: "Cell-456", lat: 40.7589, lng: -73.9851, status: "degraded", load: 87 },
+    { id: "Cell-789", lat: 40.7306, lng: -73.9352, status: "critical", load: 92 },
   ];
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainer.current || !isTokenSet || map.current) return;
+
+    mapboxgl.accessToken = mapboxToken;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [-74.0, 40.73],
+      zoom: 11,
+    });
+
+    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+    // Add cell markers
+    cells.forEach((cell) => {
+      const statusConfig = {
+        optimal: { color: "#10b981", icon: Zap },
+        degraded: { color: "#f59e0b", icon: AlertCircle },
+        critical: { color: "#ef4444", icon: AlertCircle },
+      };
+
+      const config = statusConfig[cell.status as keyof typeof statusConfig];
+
+      const el = document.createElement("div");
+      el.className = "cell-marker";
+      el.style.width = "32px";
+      el.style.height = "32px";
+      el.style.borderRadius = "50%";
+      el.style.backgroundColor = config.color;
+      el.style.border = "3px solid white";
+      el.style.cursor = "pointer";
+      el.style.boxShadow = "0 4px 6px rgba(0,0,0,0.3)";
+
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([cell.lng, cell.lat])
+        .setPopup(
+          new mapboxgl.Popup({ offset: 25 }).setHTML(
+            `<div style="padding: 8px;">
+              <h3 style="font-weight: bold; margin-bottom: 4px;">${cell.id}</h3>
+              <p style="font-size: 12px; margin: 2px 0;">Status: ${cell.status}</p>
+              <p style="font-size: 12px; margin: 2px 0;">Load: ${cell.load}%</p>
+              <p style="font-size: 11px; color: #888; margin-top: 4px;">${cell.lat.toFixed(4)}, ${cell.lng.toFixed(4)}</p>
+            </div>`
+          )
+        );
+
+      if (map.current) {
+        marker.addTo(map.current);
+      }
+    });
+
+    return () => {
+      map.current?.remove();
+      map.current = null;
+    };
+  }, [isTokenSet, mapboxToken]);
+
+  // Update heatmap layer
+  useEffect(() => {
+    if (!map.current || !heatmapData || !isTokenSet) return;
+
+    const mapInstance = map.current;
+
+    mapInstance.on("load", () => {
+      // Remove existing heatmap if present
+      if (mapInstance.getLayer("kpi-heatmap")) {
+        mapInstance.removeLayer("kpi-heatmap");
+      }
+      if (mapInstance.getSource("heatmap-data")) {
+        mapInstance.removeSource("heatmap-data");
+      }
+
+      // Add heatmap source
+      mapInstance.addSource("heatmap-data", {
+        type: "geojson",
+        data: heatmapData,
+      });
+
+      // Add heatmap layer
+      mapInstance.addLayer({
+        id: "kpi-heatmap",
+        type: "heatmap",
+        source: "heatmap-data",
+        paint: {
+          "heatmap-weight": [
+            "interpolate",
+            ["linear"],
+            ["get", "value"],
+            -120, 0,
+            -60, 1,
+          ],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 12, 3],
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0, "rgba(33,102,172,0)",
+            0.2, "rgb(103,169,207)",
+            0.4, "rgb(209,229,240)",
+            0.6, "rgb(253,219,199)",
+            0.8, "rgb(239,138,98)",
+            1, "rgb(178,24,43)",
+          ],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 12, 30],
+          "heatmap-opacity": 0.8,
+        },
+      });
+
+      // Add click handler for heatmap points
+      mapInstance.on("click", "kpi-heatmap", (e) => {
+        if (!e.features || !e.features[0]) return;
+
+        const coordinates = (e.features[0].geometry as any).coordinates.slice();
+        const { value } = e.features[0].properties as { value: number };
+
+        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+          coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+        }
+
+        if (popup.current) {
+          popup.current.remove();
+        }
+
+        popup.current = new mapboxgl.Popup()
+          .setLngLat(coordinates)
+          .setHTML(
+            `<div style="padding: 8px;">
+              <h3 style="font-weight: bold; margin-bottom: 4px;">${kpiName || "KPI Value"}</h3>
+              <p style="font-size: 14px; margin: 2px 0;">Value: ${value.toFixed(2)}</p>
+              <p style="font-size: 11px; color: #888; margin-top: 4px;">
+                ${coordinates[1].toFixed(4)}, ${coordinates[0].toFixed(4)}
+              </p>
+            </div>`
+          )
+          .addTo(mapInstance);
+      });
+
+      mapInstance.on("mouseenter", "kpi-heatmap", () => {
+        mapInstance.getCanvas().style.cursor = "pointer";
+      });
+
+      mapInstance.on("mouseleave", "kpi-heatmap", () => {
+        mapInstance.getCanvas().style.cursor = "";
+      });
+    });
+
+    // If map already loaded, trigger update
+    if (mapInstance.loaded()) {
+      mapInstance.fire("load");
+    }
+  }, [heatmapData, kpiName, isTokenSet]);
+
+  if (!isTokenSet) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-background via-card to-background p-6">
+        <Card className="w-full max-w-md border-border/50 bg-card/90 p-6 backdrop-blur">
+          <h3 className="mb-4 text-lg font-semibold text-foreground">
+            Enter Mapbox Access Token
+          </h3>
+          <p className="mb-4 text-sm text-muted-foreground">
+            To display the interactive map, please enter your Mapbox public token.
+            Get yours at{" "}
+            <a
+              href="https://account.mapbox.com/access-tokens/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              mapbox.com
+            </a>
+          </p>
+          <div className="flex gap-2">
+            <Input
+              type="password"
+              placeholder="pk.eyJ1..."
+              value={mapboxToken}
+              onChange={(e) => setMapboxToken(e.target.value)}
+              className="flex-1"
+            />
+            <button
+              onClick={() => setIsTokenSet(true)}
+              disabled={!mapboxToken.trim()}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
+              Connect
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-background via-card to-background p-6">
-      {/* Map Placeholder */}
-      <div className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted/30 backdrop-blur">
-        {/* Grid Background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:40px_40px] opacity-20" />
-        
-        {/* Center Focus Point */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="relative flex h-32 w-32 items-center justify-center">
-            <div className="absolute h-full w-full animate-pulse rounded-full border-2 border-primary/30" />
-            <div className="absolute h-24 w-24 animate-pulse rounded-full border-2 border-primary/50 animation-delay-150" />
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-glow shadow-lg">
-              <Navigation className="h-8 w-8 text-primary-foreground" />
-            </div>
-          </div>
-        </div>
+      <div className="relative h-full w-full overflow-hidden rounded-xl border border-border shadow-lg">
+        <div ref={mapContainer} className="absolute inset-0" />
 
-        {/* Cell Markers */}
-        {cells.map((cell, idx) => {
-          const positions = [
-            { top: "30%", left: "25%" },
-            { top: "60%", left: "65%" },
-            { top: "45%", left: "75%" },
-          ];
-          
-          const statusConfig = {
-            optimal: { color: "success", icon: Zap },
-            degraded: { color: "warning", icon: AlertCircle },
-            critical: { color: "destructive", icon: AlertCircle },
-          };
+        {/* Heatmap Legend */}
+        {heatmapData && (
+          <Card className="absolute bottom-6 left-6 border-border/50 bg-card/90 p-4 backdrop-blur">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">
+              {kpiName || "KPI"} Heatmap
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-[rgb(33,102,172)]" />
+                <span className="text-xs text-muted-foreground">Low Density</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-[rgb(253,219,199)]" />
+                <span className="text-xs text-muted-foreground">Medium Density</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-[rgb(178,24,43)]" />
+                <span className="text-xs text-muted-foreground">High Density</span>
+              </div>
+            </div>
+          </Card>
+        )}
 
-          const config = statusConfig[cell.status as keyof typeof statusConfig];
-          const Icon = config.icon;
-
-          return (
-            <div
-              key={cell.id}
-              className="absolute animate-fade-in"
-              style={{ ...positions[idx], animationDelay: `${idx * 150}ms` }}
-            >
-              <Card className="w-48 border-border/50 bg-card/90 p-3 backdrop-blur transition-all hover:scale-105 hover:shadow-lg">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-${config.color}/10`}>
-                      <Icon className={`h-4 w-4 text-${config.color}`} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{cell.id}</p>
-                      <p className="text-xs text-muted-foreground">Load: {cell.load}%</p>
-                    </div>
-                  </div>
-                  <Badge 
-                    variant={cell.status === "optimal" ? "default" : "destructive"}
-                    className="text-xs"
-                  >
-                    {cell.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3" />
-                  <span>{cell.lat}, {cell.lng}</span>
-                </div>
-              </Card>
+        {/* Cell Status Legend */}
+        {!heatmapData && (
+          <Card className="absolute bottom-6 left-6 border-border/50 bg-card/90 p-4 backdrop-blur">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">Cell Status</h3>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-success" />
+                <span className="text-xs text-muted-foreground">Optimal (0-60% load)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-warning" />
+                <span className="text-xs text-muted-foreground">Degraded (60-85% load)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-destructive" />
+                <span className="text-xs text-muted-foreground">Critical (85%+ load)</span>
+              </div>
             </div>
-          );
-        })}
-
-        {/* Legend */}
-        <Card className="absolute bottom-6 left-6 border-border/50 bg-card/90 p-4 backdrop-blur">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">Cell Status</h3>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-success" />
-              <span className="text-xs text-muted-foreground">Optimal (0-60% load)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-warning" />
-              <span className="text-xs text-muted-foreground">Degraded (60-85% load)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-destructive" />
-              <span className="text-xs text-muted-foreground">Critical (85%+ load)</span>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {/* Info Banner */}
         <Card className="absolute right-6 top-6 border-secondary/20 bg-secondary/10 p-3 backdrop-blur">
           <p className="text-sm font-medium text-secondary">
-            3 cells displayed • Click any cell for details
+            {heatmapData
+              ? `${heatmapData.features.length} data points • Click to view details`
+              : "3 cells displayed • Click any cell for details"}
           </p>
         </Card>
       </div>
