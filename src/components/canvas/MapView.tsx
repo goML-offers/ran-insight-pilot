@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { MapPin, Zap, AlertCircle } from "lucide-react";
+import { Zap, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 
 interface HeatmapData {
   type: "FeatureCollection";
@@ -30,8 +28,8 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const popup = useRef<mapboxgl.Popup | null>(null);
-  const [mapboxToken, setMapboxToken] = useState("");
-  const [isTokenSet, setIsTokenSet] = useState(false);
+  
+  const MAPBOX_TOKEN = "pk.eyJ1IjoiYWJoaW5hdi10aGUtd2l6YXJkIiwiYSI6ImNtZ3duMmthdzB5MWsyd3MydnlzYjd0aGIifQ.JYNx6D_Ngl1g2F2d5vW9dA";
 
   // Static cell data for display when no heatmap
   const cells = [
@@ -42,9 +40,9 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !isTokenSet || map.current) return;
+    if (!mapContainer.current || map.current) return;
 
-    mapboxgl.accessToken = mapboxToken;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -97,11 +95,11 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
       map.current?.remove();
       map.current = null;
     };
-  }, [isTokenSet, mapboxToken]);
+  }, []);
 
   // Update heatmap layer
   useEffect(() => {
-    if (!map.current || !heatmapData || !isTokenSet) return;
+    if (!map.current || !heatmapData) return;
 
     const mapInstance = map.current;
 
@@ -192,47 +190,7 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
     if (mapInstance.loaded()) {
       mapInstance.fire("load");
     }
-  }, [heatmapData, kpiName, isTokenSet]);
-
-  if (!isTokenSet) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-background via-card to-background p-6">
-        <Card className="w-full max-w-md border-border/50 bg-card/90 p-6 backdrop-blur">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">
-            Enter Mapbox Access Token
-          </h3>
-          <p className="mb-4 text-sm text-muted-foreground">
-            To display the interactive map, please enter your Mapbox public token.
-            Get yours at{" "}
-            <a
-              href="https://account.mapbox.com/access-tokens/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              mapbox.com
-            </a>
-          </p>
-          <div className="flex gap-2">
-            <Input
-              type="password"
-              placeholder="pk.eyJ1..."
-              value={mapboxToken}
-              onChange={(e) => setMapboxToken(e.target.value)}
-              className="flex-1"
-            />
-            <button
-              onClick={() => setIsTokenSet(true)}
-              disabled={!mapboxToken.trim()}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              Connect
-            </button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  }, [heatmapData, kpiName]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-background via-card to-background p-6">
