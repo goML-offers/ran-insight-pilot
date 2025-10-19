@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Zap, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { getCellStatus, type CellStatus } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface HeatmapData {
   type: "FeatureCollection";
@@ -28,74 +29,110 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const popup = useRef<mapboxgl.Popup | null>(null);
+  const [cells, setCells] = useState<CellStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   
   const MAPBOX_TOKEN = "pk.eyJ1IjoiYWJoaW5hdi10aGUtd2l6YXJkIiwiYSI6ImNtZ3duMmthdzB5MWsyd3MydnlzYjd0aGIifQ.JYNx6D_Ngl1g2F2d5vW9dA";
 
-  // Static cell data for display when no heatmap
-  const cells = [
-    { id: "Cell-123", lat: 40.7128, lng: -74.0060, status: "optimal", load: 45 },
-    { id: "Cell-456", lat: 40.7589, lng: -73.9851, status: "degraded", load: 87 },
-    { id: "Cell-789", lat: 40.7306, lng: -73.9352, status: "critical", load: 92 },
-  ];
+  // Fetch cell status data
+  useEffect(() => {
+    const fetchCells = async () => {
+      try {
+        const data = await getCellStatus();
+        setCells(data);
+      } catch (error) {
+        console.error('Failed to fetch cell status:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load cell status data. Using fallback data.",
+          variant: "destructive",
+        });
+        // Fallback data
+        setCells([
+          { cell_id: "cell_001", latitude: 28.7041, longitude: 77.1025, status: "Optimal", load_percentage: 45, rrc_success_rate: 98.5 },
+          { cell_id: "cell_002", latitude: 28.7050, longitude: 77.1035, status: "Degraded", load_percentage: 72, rrc_success_rate: 95.2 },
+          { cell_id: "cell_003", latitude: 28.698, longitude: 77.095, status: "Critical", load_percentage: 91, rrc_success_rate: 88.1 },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCells();
+    const interval = setInterval(fetchCells, 30000);
+    return () => clearInterval(interval);
+  }, [toast]);
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    if (!mapContainer.current || map.current || cells.length === 0) return;
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    const initialCenter: [number, number] = [cells[0].longitude, cells[0].latitude];
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/dark-v11",
-      center: [-74.0, 40.73],
-      zoom: 11,
+      center: initialCenter,
+      zoom: 12,
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-    // Add cell markers
+    // Add cell markers from API data
     cells.forEach((cell) => {
-      const statusConfig = {
-        optimal: { color: "#10b981", icon: Zap },
-        degraded: { color: "#f59e0b", icon: AlertCircle },
-        critical: { color: "#ef4444", icon: AlertCircle },
-      };
-
-      const config = statusConfig[cell.status as keyof typeof statusConfig];
-
       const el = document.createElement("div");
       el.className = "cell-marker";
-      el.style.width = "32px";
-      el.style.height = "32px";
-      el.style.borderRadius = "50%";
-      el.style.backgroundColor = config.color;
-      el.style.border = "3px solid white";
-      el.style.cursor = "pointer";
-      el.style.boxShadow = "0 4px 6px rgba(0,0,0,0.3)";
+      
+      const color = cell.status === "Optimal" ? "#10b981" : 
+                    cell.status === "Degraded" ? "#f59e0b" : "#ef4444";
+      
+      el.innerHTML = `
+        <div style="
+          background: ${color};
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          cursor: pointer;
+          transition: transform 0.2s;
+        "></div>
+      `;
+      
+      el.addEventListener("mouseenter", () => {
+        el.style.transform = "scale(1.2)";
+      });
+      
+      el.addEventListener("mouseleave", () => {
+        el.style.transform = "scale(1)";
+      });
 
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([cell.lng, cell.lat])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 25 }).setHTML(
-            `<div style="padding: 8px;">
-              <h3 style="font-weight: bold; margin-bottom: 4px;">${cell.id}</h3>
-              <p style="font-size: 12px; margin: 2px 0;">Status: ${cell.status}</p>
-              <p style="font-size: 12px; margin: 2px 0;">Load: ${cell.load}%</p>
-              <p style="font-size: 11px; color: #888; margin-top: 4px;">${cell.lat.toFixed(4)}, ${cell.lng.toFixed(4)}</p>
-            </div>`
-          )
-        );
+      const cellPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div style="padding: 8px; min-width: 200px;">
+          <h3 style="margin: 0 0 8px 0; font-weight: bold;">${cell.cell_id}</h3>
+          <p style="margin: 4px 0;">Status: <strong>${cell.status}</strong></p>
+          <p style="margin: 4px 0;">Load: <strong>${cell.load_percentage.toFixed(1)}%</strong></p>
+          <p style="margin: 4px 0;">RRC Rate: <strong>${cell.rrc_success_rate.toFixed(1)}%</strong></p>
+          <p style="margin: 4px 0; font-size: 12px; color: #888;">
+            Lat: ${cell.latitude.toFixed(4)}, Lon: ${cell.longitude.toFixed(4)}
+          </p>
+        </div>
+      `);
 
-      if (map.current) {
-        marker.addTo(map.current);
-      }
+      new mapboxgl.Marker(el)
+        .setLngLat([cell.longitude, cell.latitude])
+        .setPopup(cellPopup)
+        .addTo(map.current!);
     });
 
     return () => {
       map.current?.remove();
       map.current = null;
     };
-  }, []);
+  }, [cells]);
 
   // Update heatmap layer
   useEffect(() => {
@@ -192,6 +229,14 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
     }
   }, [heatmapData, kpiName]);
 
+  if (loading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-background via-card to-background">
+        <div className="animate-pulse">Loading map data...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-background via-card to-background p-6">
       <div className="relative h-full w-full overflow-hidden rounded-xl border border-border shadow-lg">
@@ -226,16 +271,16 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
             <h3 className="mb-3 text-sm font-semibold text-foreground">Cell Status</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-success" />
-                <span className="text-xs text-muted-foreground">Optimal (0-60% load)</span>
+                <div className="h-3 w-3 rounded-full bg-[#10b981] border-2 border-white"></div>
+                <span className="text-xs">Optimal ({cells.filter(c => c.status === 'Optimal').length})</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-warning" />
-                <span className="text-xs text-muted-foreground">Degraded (60-85% load)</span>
+                <div className="h-3 w-3 rounded-full bg-[#f59e0b] border-2 border-white"></div>
+                <span className="text-xs">Degraded ({cells.filter(c => c.status === 'Degraded').length})</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-destructive" />
-                <span className="text-xs text-muted-foreground">Critical (85%+ load)</span>
+                <div className="h-3 w-3 rounded-full bg-[#ef4444] border-2 border-white"></div>
+                <span className="text-xs">Critical ({cells.filter(c => c.status === 'Critical').length})</span>
               </div>
             </div>
           </Card>
@@ -246,7 +291,7 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
           <p className="text-sm font-medium text-secondary">
             {heatmapData
               ? `${heatmapData.features.length} data points • Click to view details`
-              : "3 cells displayed • Click any cell for details"}
+              : `${cells.length} cells displayed • Click any cell for details`}
           </p>
         </Card>
       </div>

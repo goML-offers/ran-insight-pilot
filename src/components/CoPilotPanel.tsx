@@ -4,18 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
+import { sendChatMessage, type ChatMessage } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
-interface Message {
+interface Message extends ChatMessage {
   id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
   type?: "text" | "recommendation";
-  recommendation?: {
-    title: string;
-    justification: string;
-    impact: string;
-  };
 }
 
 export const CoPilotPanel = () => {
@@ -24,37 +18,63 @@ export const CoPilotPanel = () => {
       id: "1",
       role: "assistant",
       content: "Hello! I'm your RAN Co-pilot. I can help you diagnose network issues, analyze KPIs, and optimize cell parameters. How can I assist you today?",
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       type: "text",
     },
   ]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: input,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       type: "text",
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Send message to backend API
+      const response = await sendChatMessage(input);
+      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I've analyzed the network data. Let me investigate that for you...",
-        timestamp: new Date(),
+        content: response.content,
+        timestamp: response.timestamp || new Date().toISOString(),
+        type: response.recommendation ? "recommendation" : "text",
+        recommendation: response.recommendation,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get response from AI assistant",
+        variant: "destructive",
+      });
+      
+      // Fallback response
+      const fallbackMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "I'm having trouble connecting to the backend right now. Please try again later.",
+        timestamp: new Date().toISOString(),
         type: "text",
       };
-      setMessages((prev) => [...prev, aiMessage]);
-    }, 1000);
+      setMessages((prev) => [...prev, fallbackMessage]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -87,7 +107,7 @@ export const CoPilotPanel = () => {
                     <h3 className="font-semibold text-primary">{message.recommendation.title}</h3>
                   </div>
                   <p className="mb-3 text-sm text-muted-foreground">
-                    {message.recommendation.justification}
+                    {message.recommendation.description}
                   </p>
                   <div className="mb-4 rounded-lg bg-muted/50 p-3">
                     <p className="text-xs font-medium text-foreground">Predicted Impact:</p>
@@ -112,12 +132,19 @@ export const CoPilotPanel = () => {
                 >
                   <p className="text-sm">{message.content}</p>
                   <p className="mt-1 text-xs opacity-70">
-                    {message.timestamp.toLocaleTimeString()}
+                    {new Date(message.timestamp || Date.now()).toLocaleTimeString()}
                   </p>
                 </div>
               )}
             </div>
           ))}
+          {loading && (
+            <div className="flex justify-start animate-fade-in">
+              <div className="max-w-md rounded-lg bg-muted px-4 py-3 text-foreground">
+                <p className="text-sm">Thinking...</p>
+              </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
 
@@ -127,11 +154,12 @@ export const CoPilotPanel = () => {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            onKeyDown={(e) => e.key === "Enter" && !loading && handleSend()}
             placeholder="Ask about network performance..."
             className="flex-1"
+            disabled={loading}
           />
-          <Button onClick={handleSend} size="icon">
+          <Button onClick={handleSend} size="icon" disabled={loading}>
             <Send className="h-4 w-4" />
           </Button>
         </div>

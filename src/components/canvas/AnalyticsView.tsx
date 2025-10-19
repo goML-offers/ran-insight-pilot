@@ -1,153 +1,175 @@
-import { Card } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-
-const kpiData = [
-  { time: "00:00", rrc: 96.5, handover: 98.2, throughput: 450 },
-  { time: "04:00", rrc: 97.1, handover: 98.5, throughput: 380 },
-  { time: "08:00", rrc: 94.8, handover: 97.8, throughput: 720 },
-  { time: "12:00", rrc: 93.2, handover: 96.9, throughput: 890 },
-  { time: "16:00", rrc: 95.4, handover: 97.5, throughput: 950 },
-  { time: "20:00", rrc: 96.8, handover: 98.1, throughput: 680 },
-];
+import { getTimeSeries, type TimeSeriesData } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 const alarmData = [
-  { category: "Hardware", count: 5 },
-  { category: "Software", count: 12 },
-  { category: "Configuration", count: 8 },
-  { category: "Performance", count: 15 },
-  { category: "Connectivity", count: 7 },
+  { category: "Critical", count: 3, fill: "#ef4444" },
+  { category: "Major", count: 7, fill: "#f59e0b" },
+  { category: "Minor", count: 12, fill: "#3b82f6" },
+  { category: "Warning", count: 18, fill: "#10b981" },
 ];
 
 export const AnalyticsView = () => {
+  const [kpiData, setKpiData] = useState<TimeSeriesData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const data = await getTimeSeries(24);
+        setKpiData(data);
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load analytics data. Using fallback data.",
+          variant: "destructive",
+        });
+        // Fallback data
+        const fallbackData: TimeSeriesData[] = [];
+        for (let i = 0; i < 24; i++) {
+          const date = new Date();
+          date.setHours(date.getHours() - (24 - i));
+          fallbackData.push({
+            timestamp: date.toISOString(),
+            rrc_success_rate: 95 + Math.random() * 4,
+            handover_success_rate: 94 + Math.random() * 4,
+            throughput_mbps: 120 + Math.random() * 30,
+          });
+        }
+        setKpiData(fallbackData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [toast]);
+
+  const formattedKpiData = kpiData.map(item => ({
+    time: new Date(item.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    rrcRate: item.rrc_success_rate,
+    handoverRate: item.handover_success_rate,
+    throughput: item.throughput_mbps,
+  }));
+
+  if (loading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-background">
+        <div className="animate-pulse">Loading analytics...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full overflow-auto bg-gradient-to-br from-background via-card to-background p-6">
-      <div className="space-y-6">
-        {/* KPI Trends */}
-        <Card className="border-border/50 bg-card/50 p-6 backdrop-blur">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">Network KPI Trends - Last 24h</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={kpiData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="time" 
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: '12px' }}
-              />
-              <YAxis 
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: '12px' }}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px'
-                }}
-              />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="rrc" 
-                stroke="hsl(var(--chart-1))" 
-                strokeWidth={2}
-                name="RRC Success Rate (%)"
-                dot={{ fill: 'hsl(var(--chart-1))' }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="handover" 
-                stroke="hsl(var(--chart-2))" 
-                strokeWidth={2}
-                name="Handover Success (%)"
-                dot={{ fill: 'hsl(var(--chart-2))' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+    <div className="h-full overflow-auto bg-background p-6">
+      <div className="grid gap-6">
+        {/* KPI Trends Chart */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-foreground">Network KPI Trends</CardTitle>
+            <CardDescription>RRC and Handover Success Rates (Last 24 Hours)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={formattedKpiData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="time" className="text-xs" />
+                <YAxis className="text-xs" domain={[80, 100]} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="rrcRate" 
+                  stroke="#0ea5e9" 
+                  strokeWidth={2}
+                  name="RRC Success Rate (%)"
+                  dot={{ fill: '#0ea5e9', r: 3 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="handoverRate" 
+                  stroke="#10b981" 
+                  strokeWidth={2}
+                  name="Handover Rate (%)"
+                  dot={{ fill: '#10b981', r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
         </Card>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Throughput Area Chart */}
-          <Card className="border-border/50 bg-card/50 p-6 backdrop-blur">
-            <h3 className="mb-4 text-lg font-semibold text-foreground">Network Throughput (Mbps)</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={kpiData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="time" 
-                  stroke="hsl(var(--muted-foreground))"
-                  style={{ fontSize: '12px' }}
-                />
-                <YAxis 
-                  stroke="hsl(var(--muted-foreground))"
-                  style={{ fontSize: '12px' }}
-                />
+        {/* Network Throughput Chart */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-foreground">Network Throughput</CardTitle>
+            <CardDescription>Data throughput over time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={formattedKpiData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="time" className="text-xs" />
+                <YAxis className="text-xs" />
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                 />
                 <Area 
                   type="monotone" 
                   dataKey="throughput" 
-                  stroke="hsl(var(--secondary))" 
-                  fill="hsl(var(--secondary) / 0.2)"
-                  strokeWidth={2}
+                  stroke="#ea580c" 
+                  fill="#ea580c" 
+                  fillOpacity={0.3}
+                  name="Throughput (Mbps)"
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </Card>
+          </CardContent>
+        </Card>
 
-          {/* Alarm Distribution */}
-          <Card className="border-border/50 bg-card/50 p-6 backdrop-blur">
-            <h3 className="mb-4 text-lg font-semibold text-foreground">Active Alarms by Category</h3>
-            <ResponsiveContainer width="100%" height={250}>
+        {/* Alarm Distribution Chart */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-foreground">Alarm Distribution</CardTitle>
+            <CardDescription>Active alarms by category</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
               <BarChart data={alarmData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="category" 
-                  stroke="hsl(var(--muted-foreground))"
-                  style={{ fontSize: '11px' }}
-                  angle={-15}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis 
-                  stroke="hsl(var(--muted-foreground))"
-                  style={{ fontSize: '12px' }}
-                />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="category" className="text-xs" />
+                <YAxis className="text-xs" />
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                 />
-                <Bar 
-                  dataKey="count" 
-                  fill="hsl(var(--primary))"
-                  radius={[8, 8, 0, 0]}
-                />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </Card>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* Insights Card */}
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6 backdrop-blur">
-          <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20">
-              <div className="h-3 w-3 rounded-full bg-primary animate-pulse-glow" />
+        {/* AI Insights */}
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-card backdrop-blur">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              AI Insights
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Performance degradation detected in Cell-456. RRC success rate has dropped by 2.3% in the last hour.
+            </p>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs font-medium text-foreground">Recommendation:</p>
+              <p className="text-sm text-secondary">Consider adjusting antenna tilt or reviewing interference patterns.</p>
             </div>
-            <div>
-              <h4 className="mb-2 font-semibold text-foreground">AI Insights</h4>
-              <p className="text-sm text-muted-foreground">
-                Performance degradation detected in Cell-456 starting at 12:00. RRC success rate dropped by 3.6% 
-                correlating with a configuration change 2 hours prior. Recommend reverting tx_power parameter.
-              </p>
-            </div>
-          </div>
+          </CardContent>
         </Card>
       </div>
     </div>
