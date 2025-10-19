@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { BedrockAgentRuntimeClient, InvokeAgentCommand } from '@aws-sdk/client-bedrock-agent-runtime';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -11,14 +10,36 @@ const apiClient = axios.create({
   timeout: 10000,
 });
 
-// AWS Bedrock Agent Runtime client
-const bedrockClient = new BedrockAgentRuntimeClient({
+// AWS credentials configuration
+const awsConfig = {
   region: 'ap-south-1',
   credentials: {
     accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID || '',
     secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY || '',
   },
-});
+};
+
+// Custom client for invokeAgentRuntime
+const invokeAgentRuntime = async (params: {
+  agentRuntimeArn: string;
+  runtimeSessionId: string;
+  payload: string;
+  qualifier: string;
+}) => {
+  const url = `https://bedrock-agentcore.${awsConfig.region}.amazonaws.com/runtime/invocations`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Amz-Target': 'com.amazonaws.bedrockagentcore.InvokeAgentRuntime',
+    },
+    body: JSON.stringify(params),
+  });
+  
+  const data = await response.json();
+  return data;
+};
 
 // Dashboard KPIs
 export interface DashboardKPIs {
@@ -111,43 +132,23 @@ const generateSessionId = (): string => {
 };
 
 export const sendChatMessage = async (prompt: string): Promise<ChatMessage> => {
-  const sessionId = generateSessionId();
+  const runtimeSessionId = generateSessionId();
   
-  const command = new InvokeAgentCommand({
-    agentId: "ran_copilot-VJ4L3nAF4C",
-    agentAliasId: "DEFAULT",
-    sessionId: sessionId,
-    inputText: prompt,
+  const response = await invokeAgentRuntime({
+    agentRuntimeArn: "arn:aws:bedrock-agentcore:ap-south-1:767828738296:runtime/ran_copilot-VJ4L3nAF4C",
+    runtimeSessionId: runtimeSessionId,
+    payload: JSON.stringify({ input: { prompt } }),
+    qualifier: "DEFAULT"
   });
-
-  const response = await bedrockClient.send(command);
   
-  // Process the response stream
-  let fullResponse = '';
-  if (response.completion) {
-    for await (const event of response.completion) {
-      if (event.chunk?.bytes) {
-        const chunk = new TextDecoder().decode(event.chunk.bytes);
-        fullResponse += chunk;
-      }
-    }
-  }
+  // Parse the response
+  const responseData = typeof response === 'string' ? JSON.parse(response) : response;
   
-  // Parse and return the message
-  try {
-    const parsedResponse = JSON.parse(fullResponse);
-    return parsedResponse.output?.message || {
-      role: 'assistant',
-      content: fullResponse,
-      timestamp: new Date().toISOString(),
-    };
-  } catch {
-    return {
-      role: 'assistant',
-      content: fullResponse,
-      timestamp: new Date().toISOString(),
-    };
-  }
+  return responseData.message || {
+    role: 'assistant',
+    content: responseData.content || '',
+    timestamp: new Date().toISOString(),
+  };
 };
 
 // Health Check
