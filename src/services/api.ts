@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -10,36 +11,14 @@ const apiClient = axios.create({
   timeout: 10000,
 });
 
-// AWS credentials configuration
-const awsConfig = {
+// AWS Bedrock AgentCore client
+const bedrockClient = new BedrockAgentCoreClient({
   region: 'ap-south-1',
   credentials: {
     accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID || '',
     secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY || '',
   },
-};
-
-// Custom client for invokeAgentRuntime
-const invokeAgentRuntime = async (params: {
-  agentRuntimeArn: string;
-  runtimeSessionId: string;
-  payload: string;
-  qualifier: string;
-}) => {
-  const url = `https://bedrock-agentcore.${awsConfig.region}.amazonaws.com/runtime/invocations`;
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Amz-Target': 'com.amazonaws.bedrockagentcore.InvokeAgentRuntime',
-    },
-    body: JSON.stringify(params),
-  });
-  
-  const data = await response.json();
-  return data;
-};
+});
 
 // Dashboard KPIs
 export interface DashboardKPIs {
@@ -134,19 +113,38 @@ const generateSessionId = (): string => {
 export const sendChatMessage = async (prompt: string): Promise<ChatMessage> => {
   const runtimeSessionId = generateSessionId();
   
-  const response = await invokeAgentRuntime({
-    agentRuntimeArn: "arn:aws:bedrock-agentcore:ap-south-1:767828738296:runtime/ran_copilot-VJ4L3nAF4C",
+  const input = {
     runtimeSessionId: runtimeSessionId,
-    payload: JSON.stringify({ input: { prompt } }),
-    qualifier: "DEFAULT"
-  });
+    agentRuntimeArn: "arn:aws:bedrock-agentcore:ap-south-1:767828738296:runtime/ran_copilot-VJ4L3nAF4C",
+    qualifier: "DEFAULT",
+    payload: new TextEncoder().encode(JSON.stringify({ input: { prompt } })),
+  };
+
+  const command = new InvokeAgentRuntimeCommand(input);
+  const response = await bedrockClient.send(command);
+  const textResponse = await response.response?.transformToString();
   
   // Parse the response
-  const responseData = typeof response === 'string' ? JSON.parse(response) : response;
+  if (textResponse) {
+    try {
+      const parsedResponse = JSON.parse(textResponse);
+      return parsedResponse.message || {
+        role: 'assistant',
+        content: parsedResponse.content || textResponse,
+        timestamp: new Date().toISOString(),
+      };
+    } catch {
+      return {
+        role: 'assistant',
+        content: textResponse,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
   
-  return responseData.message || {
+  return {
     role: 'assistant',
-    content: responseData.content || '',
+    content: '',
     timestamp: new Date().toISOString(),
   };
 };
