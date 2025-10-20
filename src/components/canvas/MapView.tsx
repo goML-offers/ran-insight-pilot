@@ -116,12 +116,12 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
       }
 
       const cellPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div style="padding: 8px; min-width: 200px;">
-          <h3 style="margin: 0 0 8px 0; font-weight: bold;">${cell.cell_id}</h3>
-          <p style="margin: 4px 0;">Status: <strong>${cell.status}</strong></p>
-          <p style="margin: 4px 0;">Load: <strong>${cell.load_percentage.toFixed(1)}%</strong></p>
-          <p style="margin: 4px 0;">RRC Rate: <strong>${cell.rrc_success_rate.toFixed(1)}%</strong></p>
-          <p style="margin: 4px 0; font-size: 12px; color: #888;">
+        <div style="padding: 12px; min-width: 200px; background: white; color: #1f2937; border-radius: 8px;">
+          <h3 style="margin: 0 0 8px 0; font-weight: bold; color: #111827;">${cell.cell_id}</h3>
+          <p style="margin: 4px 0; color: #374151;">Status: <strong style="color: ${color};">${cell.status}</strong></p>
+          <p style="margin: 4px 0; color: #374151;">Load: <strong>${cell.load_percentage.toFixed(1)}%</strong></p>
+          <p style="margin: 4px 0; color: #374151;">RRC Rate: <strong>${cell.rrc_success_rate.toFixed(1)}%</strong></p>
+          <p style="margin: 4px 0; font-size: 12px; color: #6b7280;">
             Lat: ${cell.latitude.toFixed(4)}, Lon: ${cell.longitude.toFixed(4)}
           </p>
         </div>
@@ -208,10 +208,10 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
         popup.current = new mapboxgl.Popup()
           .setLngLat(coordinates)
           .setHTML(
-            `<div style="padding: 8px;">
-              <h3 style="font-weight: bold; margin-bottom: 4px;">${kpiName || "KPI Value"}</h3>
-              <p style="font-size: 14px; margin: 2px 0;">Value: ${value.toFixed(2)}</p>
-              <p style="font-size: 11px; color: #888; margin-top: 4px;">
+            `<div style="padding: 12px; background: white; color: #1f2937; border-radius: 8px;">
+              <h3 style="font-weight: bold; margin-bottom: 4px; color: #111827;">${kpiName || "KPI Value"}</h3>
+              <p style="font-size: 14px; margin: 2px 0; color: #374151;">Value: ${value.toFixed(2)}</p>
+              <p style="font-size: 11px; color: #6b7280; margin-top: 4px;">
                 ${coordinates[1].toFixed(4)}, ${coordinates[0].toFixed(4)}
               </p>
             </div>`
