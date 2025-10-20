@@ -85,7 +85,7 @@ export const DashboardHeader = () => {
     <header className="border-b border-border bg-gradient-to-r from-background via-card to-background px-6 py-4">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src={gomlLogo} alt="GoML Logo" className="h-10 w-auto" />
+          <img src={gomlLogo} alt="GoML Logo" className="h-8 w-auto" />
           <div>
             <h1 className="text-2xl font-bold text-foreground">RAN Co-pilot</h1>
             <p className="text-sm text-muted-foreground">Network Operations Center</p>
