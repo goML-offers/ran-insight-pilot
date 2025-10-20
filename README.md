@@ -1,95 +1,145 @@
-# Welcome to your Lovable project
+# RAN Co-pilot Dashboard
 
-## Project info
+A modern React-based dashboard for Radio Access Network (RAN) monitoring and optimization with AI-powered co-pilot assistance.
 
-**URL**: https://lovable.dev/projects/f1a9f8e5-4a0e-4dbd-a10f-8ea46834eb82
+## Features
 
-## How can I edit this code?
+- **Real-time KPI Monitoring**: Track network performance metrics with live updates
+- **Interactive Map View**: Visualize cell tower locations and signal strength with heatmaps
+- **Analytics Dashboard**: Comprehensive charts and graphs for network performance analysis
+- **Data Table View**: Detailed tabular data for in-depth analysis
+- **AI Co-pilot**: Intelligent assistant for network diagnostics and optimization recommendations
+- **Responsive Design**: Modern UI built with shadcn/ui and Tailwind CSS
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI Components**: shadcn/ui + Radix UI
+- **Styling**: Tailwind CSS
+- **State Management**: TanStack Query (React Query)
+- **Routing**: React Router DOM
+- **Maps**: Mapbox GL JS
+- **Charts**: Recharts
+- **HTTP Client**: Axios
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f1a9f8e5-4a0e-4dbd-a10f-8ea46834eb82) and start prompting.
+## Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js 18+ (recommended to use [nvm](https://github.com/nvm-sh/nvm))
+- npm or yarn package manager
+- Backend API server (separate repository)
 
-**Use your preferred IDE**
+## Getting Started
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 1. Clone the Repository
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 2. Install Dependencies
 
-# Step 4: Configure environment variables (optional)
-# Create a .env file and set:
-# - VITE_API_URL (default: http://localhost:8080)
+```bash
+npm install
+# or
+yarn install
+```
 
-# Step 5: Start the backend server (separate repository)
-# The backend should be running on http://localhost:8080
+### 3. Environment Configuration
 
-# Step 6: Start the development server with auto-reloading and an instant preview.
+Create a `.env` file in the root directory:
+
+```env
+VITE_API_URL=http://localhost:8080
+```
+
+### 4. Start the Backend Server
+
+Make sure your backend API server is running on the configured URL (default: `http://localhost:8080`).
+
+The backend should provide endpoints for:
+- Dashboard KPIs
+- Cell status and performance metrics
+- Time-series analytics data
+- AI chat functionality
+
+### 5. Start Development Server
+
+```bash
 npm run dev
 ```
 
-## Backend API
+The application will be available at `http://localhost:5173`
 
-This project uses a backend API for all data and AI agent interactions. The backend handles:
+## Available Scripts
 
-- Dashboard KPI data
-- Cell status and performance metrics
-- Time-series analytics
-- AI agent chat via AWS Bedrock
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build for production
+- `npm run build:dev` - Build in development mode
+- `npm run preview` - Preview production build locally
+- `npm run lint` - Run ESLint for code quality checks
 
-### API Base URL
-- **Development**: `http://localhost:8080`
-- **Production**: Configure via `VITE_API_URL` environment variable
+## Project Structure
 
-Make sure the backend server is running before starting the frontend application.
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/             # shadcn/ui components
+│   ├── canvas/         # Dashboard view components
+│   ├── CanvasView.tsx  # Main canvas container
+│   ├── CoPilotPanel.tsx # AI assistant panel
+│   └── DashboardHeader.tsx # Header with KPIs
+├── hooks/              # Custom React hooks
+├── lib/                # Utility functions
+├── pages/              # Route components
+├── services/           # API service functions
+└── assets/             # Static assets
+```
 
-**Edit a file directly in GitHub**
+## API Integration
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+The application expects a REST API with the following endpoints:
 
-**Use GitHub Codespaces**
+- `GET /api/dashboard/kpis` - Dashboard KPI data
+- `POST /api/chat` - AI co-pilot chat messages
+- Additional endpoints for cell data and analytics
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Contributing
 
-## What technologies are used for this project?
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-This project is built with:
+## Development Guidelines
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- Follow TypeScript best practices
+- Use ESLint configuration for code consistency
+- Implement responsive design principles
+- Write meaningful commit messages
+- Add proper error handling for API calls
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/f1a9f8e5-4a0e-4dbd-a10f-8ea46834eb82) and click on Share -> Publish.
+### Production Build
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+npm run build
+```
 
-Yes, you can!
+The build artifacts will be stored in the `dist/` directory.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Environment Variables for Production
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Set the following environment variables for production deployment:
+
+- `VITE_API_URL` - Production API server URL
+
+## License
+
+This project is open source. Please check the LICENSE file for details.
+
+## Support
+
+For questions and support, please open an issue in the GitHub repository.
