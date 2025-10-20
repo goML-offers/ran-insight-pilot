@@ -99,16 +99,21 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
           cursor: pointer;
           transition: transform 0.2s;
+          pointer-events: auto;
+          transform-origin: center center;
         "></div>
       `;
       
-      el.addEventListener("mouseenter", () => {
-        el.style.transform = "scale(1.2)";
-      });
-      
-      el.addEventListener("mouseleave", () => {
-        el.style.transform = "scale(1)";
-      });
+      const innerDiv = el.querySelector('div');
+      if (innerDiv) {
+        innerDiv.addEventListener("mouseenter", () => {
+          (innerDiv as HTMLElement).style.transform = "scale(1.2)";
+        });
+        
+        innerDiv.addEventListener("mouseleave", () => {
+          (innerDiv as HTMLElement).style.transform = "scale(1)";
+        });
+      }
 
       const cellPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
         <div style="padding: 8px; min-width: 200px;">
