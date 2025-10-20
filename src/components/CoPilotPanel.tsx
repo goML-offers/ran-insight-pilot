@@ -130,7 +130,7 @@ export const CoPilotPanel = () => {
                       : "bg-muted text-foreground"
                   }`}
                 >
-                  <p className="text-sm">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                   <p className="mt-1 text-xs opacity-70">
                     {new Date(message.timestamp || Date.now()).toLocaleTimeString()}
                   </p>
