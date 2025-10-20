@@ -128,10 +128,14 @@ export const CoPilotPanel = () => {
                   className={`max-w-md rounded-lg px-4 py-3 ${
                     message.role === "user"
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground"
+                      : "bg-muted"
                   }`}
                 >
-                  <div className={`text-sm prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0 [&_*]:!text-inherit [&_strong]:!font-bold [&_h1]:!font-bold [&_h2]:!font-bold [&_h3]:!font-bold`}>
+                  <div className={`text-sm [&_*]:leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_li]:my-1 [&_strong]:font-bold [&_h1]:text-base [&_h1]:font-bold [&_h1]:my-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:my-2 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:my-2 ${
+                    message.role === "user" 
+                      ? "[&_*]:text-primary-foreground" 
+                      : "[&_*]:text-foreground"
+                  }`}>
                     <ReactMarkdown>{message.content}</ReactMarkdown>
                   </div>
                   <p className="mt-1 text-xs opacity-70">
