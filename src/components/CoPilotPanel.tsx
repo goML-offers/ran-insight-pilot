@@ -131,7 +131,11 @@ export const CoPilotPanel = () => {
                       : "bg-muted text-foreground"
                   }`}
                 >
-                  <div className="text-sm prose prose-sm max-w-none dark:prose-invert prose-headings:mt-2 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0">
+                  <div className={`text-sm prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0 ${
+                    message.role === "user" 
+                      ? "prose-headings:text-primary-foreground prose-strong:text-primary-foreground prose-p:text-primary-foreground prose-li:text-primary-foreground" 
+                      : "prose-headings:text-foreground prose-strong:text-foreground prose-p:text-foreground prose-li:text-foreground"
+                  }`}>
                     <ReactMarkdown>{message.content}</ReactMarkdown>
                   </div>
                   <p className="mt-1 text-xs opacity-70">
