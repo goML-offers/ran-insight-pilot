@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { sendChatMessage, type ChatMessage } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
 
 interface Message extends ChatMessage {
   id: string;
@@ -130,7 +131,9 @@ export const CoPilotPanel = () => {
                       : "bg-muted text-foreground"
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                  <div className="text-sm prose prose-sm max-w-none dark:prose-invert prose-headings:mt-2 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0">
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  </div>
                   <p className="mt-1 text-xs opacity-70">
                     {new Date(message.timestamp || Date.now()).toLocaleTimeString()}
                   </p>
