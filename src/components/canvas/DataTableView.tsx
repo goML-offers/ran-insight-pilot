@@ -74,15 +74,15 @@ export const DataTableView = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cellData.map((cell) => {
-                const trend = getTrend(cell.rrc_success_rate);
+              {Array.isArray(cellData) && cellData.map((cell) => {
+                const trend = getTrend(cell.rrc_success_rate ?? 0);
                 return (
                   <TableRow key={cell.cell_id} className="animate-fade-in hover:bg-muted/50">
                     <TableCell className="font-medium text-foreground">{cell.cell_id}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className={cell.rrc_success_rate >= 95 ? "text-success" : cell.rrc_success_rate >= 90 ? "text-warning" : "text-destructive"}>
-                          {cell.rrc_success_rate.toFixed(1)}%
+                        <span className={(cell.rrc_success_rate ?? 0) >= 95 ? "text-success" : (cell.rrc_success_rate ?? 0) >= 90 ? "text-warning" : "text-destructive"}>
+                          {(cell.rrc_success_rate ?? 0).toFixed(1)}%
                         </span>
                         {trend === "up" && <TrendingUp className="h-4 w-4 text-success" />}
                         {trend === "down" && <TrendingDown className="h-4 w-4 text-destructive" />}
@@ -90,8 +90,8 @@ export const DataTableView = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className={cell.handover_success_rate >= 95 ? "text-success" : cell.handover_success_rate >= 90 ? "text-warning" : "text-destructive"}>
-                        {cell.handover_success_rate.toFixed(1)}%
+                      <span className={(cell.handover_success_rate ?? 0) >= 95 ? "text-success" : (cell.handover_success_rate ?? 0) >= 90 ? "text-warning" : "text-destructive"}>
+                        {(cell.handover_success_rate ?? 0).toFixed(1)}%
                       </span>
                     </TableCell>
                     <TableCell>
@@ -99,14 +99,14 @@ export const DataTableView = () => {
                         <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
                           <div 
                             className={`h-full ${
-                              cell.network_load >= 85 ? "bg-destructive" : 
-                              cell.network_load >= 60 ? "bg-warning" : 
+                              (cell.network_load ?? 0) >= 85 ? "bg-destructive" : 
+                              (cell.network_load ?? 0) >= 60 ? "bg-warning" : 
                               "bg-success"
                             }`}
-                            style={{ width: `${cell.network_load}%` }}
+                            style={{ width: `${cell.network_load ?? 0}%` }}
                           />
                         </div>
-                        <span className="text-xs text-muted-foreground">{cell.network_load.toFixed(0)}%</span>
+                        <span className="text-xs text-muted-foreground">{(cell.network_load ?? 0).toFixed(0)}%</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -148,7 +148,7 @@ export const DataTableView = () => {
 
         <div className="border-t border-border p-4">
           <p className="text-xs text-muted-foreground">
-            Showing {cellData.length} cells • Last updated: {new Date().toLocaleTimeString()}
+            Showing {Array.isArray(cellData) ? cellData.length : 0} cells • Last updated: {new Date().toLocaleTimeString()}
           </p>
         </div>
       </Card>

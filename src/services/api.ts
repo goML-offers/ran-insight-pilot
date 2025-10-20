@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -8,16 +7,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
-});
-
-// AWS Bedrock AgentCore client
-const bedrockClient = new BedrockAgentCoreClient({
-  region: 'ap-south-1',
-  credentials: {
-    accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY || '',
-  },
+  timeout: 30000, // Increased timeout for agent responses
 });
 
 // Dashboard KPIs
@@ -81,7 +71,7 @@ export const getCellPerformance = async (limit: number = 100): Promise<CellPerfo
   return response.data;
 };
 
-// Agent Chat
+// Agent Chat Interfaces
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -93,60 +83,76 @@ export interface ChatMessage {
   };
 }
 
-export interface ChatRequest {
-  input: {
-    prompt: string;
-  };
+export interface AgentInvokeRequest {
+  prompt: string;
+  sessionId?: string;
 }
 
-export interface ChatResponse {
-  output: {
-    message: ChatMessage;
-  };
+export interface AgentInvokeResponse {
+  completion: string;
+  sessionId: string;
 }
 
-// Generate a session ID (minimum 33 characters)
-const generateSessionId = (): string => {
-  return `session-${Date.now()}-${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+// Store session ID in memory for conversation continuity
+let currentSessionId: string | null = null;
+
+export const sendChatMessage = async (prompt: string, sessionId?: string): Promise<ChatMessage> => {
+  try {
+    const requestBody: AgentInvokeRequest = {
+      prompt,
+      sessionId: sessionId || currentSessionId || undefined
+    };
+
+    console.log('Sending chat message:', { prompt, sessionId: requestBody.sessionId });
+
+    const response = await apiClient.post<AgentInvokeResponse>('/api/agent/invoke', requestBody);
+    
+    // Store session ID for future messages
+    if (response.data.sessionId) {
+      currentSessionId = response.data.sessionId;
+    }
+
+    console.log('Agent Response:', response.data);
+
+    return {
+      role: 'assistant',
+      content: response.data.completion || 'No response received from agent',
+      timestamp: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('Error invoking agent:', error);
+    throw error;
+  }
 };
 
-export const sendChatMessage = async (prompt: string): Promise<ChatMessage> => {
-  const runtimeSessionId = generateSessionId();
-  
-  const input = {
-    runtimeSessionId: runtimeSessionId,
-    agentRuntimeArn: "arn:aws:bedrock-agentcore:ap-south-1:767828738296:runtime/ran_copilot-VJ4L3nAF4C",
-    qualifier: "DEFAULT",
-    payload: new TextEncoder().encode(JSON.stringify({ input: { prompt } })),
-  };
+// Reset the chat session (start a new conversation)
+export const resetChatSession = (): void => {
+  currentSessionId = null;
+};
 
-  const command = new InvokeAgentRuntimeCommand(input);
-  const response = await bedrockClient.send(command);
-  const textResponse = await response.response?.transformToString();
-  
-  // Parse the response
-  if (textResponse) {
-    try {
-      const parsedResponse = JSON.parse(textResponse);
-      return parsedResponse.message || {
-        role: 'assistant',
-        content: parsedResponse.content || textResponse,
-        timestamp: new Date().toISOString(),
-      };
-    } catch {
-      return {
-        role: 'assistant',
-        content: textResponse,
-        timestamp: new Date().toISOString(),
-      };
-    }
-  }
-  
-  return {
-    role: 'assistant',
-    content: '',
-    timestamp: new Date().toISOString(),
+// KPI Heatmap
+export interface HeatmapFeature {
+  type: 'Feature';
+  geometry: {
+    type: 'Point';
+    coordinates: [number, number];
   };
+  properties: {
+    kpi_value: number;
+  };
+}
+
+export interface HeatmapData {
+  type: 'FeatureCollection';
+  features: HeatmapFeature[];
+}
+
+export const getKPIHeatmap = async (kpiName: string = 'throughput_mbps'): Promise<HeatmapData> => {
+  const response = await apiClient.get('/api/kpi/heatmap', {
+    params: { kpi_name: kpiName }
+  });
+  return response.data;
 };
 
 // Health Check

@@ -49,12 +49,12 @@ export const AnalyticsView = () => {
     fetchAnalytics();
   }, [toast]);
 
-  const formattedKpiData = kpiData.map(item => ({
+  const formattedKpiData = Array.isArray(kpiData) ? kpiData.map(item => ({
     time: new Date(item.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    rrcRate: item.rrc_success_rate,
-    handoverRate: item.handover_success_rate,
-    throughput: item.throughput_mbps,
-  }));
+    rrcRate: item.rrc_success_rate ?? 0,
+    handoverRate: item.handover_success_rate ?? 0,
+    throughput: item.throughput_mbps ?? 0,
+  })) : [];
 
   if (loading) {
     return (

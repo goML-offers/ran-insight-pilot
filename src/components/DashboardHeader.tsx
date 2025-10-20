@@ -123,31 +123,31 @@ export const DashboardHeader = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title="RRC Success Rate"
-          value={`${kpiData?.rrc_success_rate.toFixed(1)}%`}
-          trend={kpiData && kpiData.rrc_success_rate >= 95 ? "+0.3% from yesterday" : "Below target"}
+          value={`${(kpiData?.rrc_success_rate ?? 0).toFixed(1)}%`}
+          trend={kpiData && kpiData.rrc_success_rate && kpiData.rrc_success_rate >= 95 ? "+0.3% from yesterday" : "Below target"}
           icon={<TrendingUp className="h-6 w-6" />}
-          status={kpiData && kpiData.rrc_success_rate >= 95 ? "success" : kpiData && kpiData.rrc_success_rate >= 90 ? "warning" : "critical"}
+          status={kpiData?.rrc_success_rate && kpiData.rrc_success_rate >= 95 ? "success" : kpiData?.rrc_success_rate && kpiData.rrc_success_rate >= 90 ? "warning" : "critical"}
         />
         <KPICard
           title="Active Cells"
-          value={kpiData?.active_cells.toString() || "0"}
+          value={(kpiData?.active_cells ?? 0).toString()}
           trend="Monitoring all cells"
           icon={<Activity className="h-6 w-6" />}
           status="success"
         />
         <KPICard
           title="Critical Alarms"
-          value={kpiData?.critical_alarms.toString() || "0"}
-          trend={kpiData && kpiData.critical_alarms > 0 ? `${kpiData.critical_alarms} new in last hour` : "All clear"}
+          value={(kpiData?.critical_alarms ?? 0).toString()}
+          trend={kpiData?.critical_alarms && kpiData.critical_alarms > 0 ? `${kpiData.critical_alarms} new in last hour` : "All clear"}
           icon={<AlertTriangle className="h-6 w-6" />}
-          status={kpiData && kpiData.critical_alarms === 0 ? "success" : kpiData && kpiData.critical_alarms < 5 ? "warning" : "critical"}
+          status={kpiData?.critical_alarms === 0 ? "success" : (kpiData?.critical_alarms ?? 0) < 5 ? "warning" : "critical"}
         />
         <KPICard
           title="Network Load"
-          value={`${kpiData?.network_load.toFixed(1)}%`}
-          trend={kpiData && kpiData.network_load < 60 ? "Normal range" : kpiData && kpiData.network_load < 85 ? "Moderate" : "High load"}
+          value={`${(kpiData?.network_load ?? 0).toFixed(1)}%`}
+          trend={kpiData?.network_load && kpiData.network_load < 60 ? "Normal range" : kpiData?.network_load && kpiData.network_load < 85 ? "Moderate" : "High load"}
           icon={<Radio className="h-6 w-6" />}
-          status={kpiData && kpiData.network_load < 60 ? "success" : kpiData && kpiData.network_load < 85 ? "warning" : "critical"}
+          status={kpiData?.network_load && kpiData.network_load < 60 ? "success" : kpiData?.network_load && kpiData.network_load < 85 ? "warning" : "critical"}
         />
       </div>
     </header>

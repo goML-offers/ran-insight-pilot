@@ -32,9 +32,31 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Configure environment variables (optional)
+# Create a .env file and set:
+# - VITE_API_URL (default: http://localhost:8080)
+
+# Step 5: Start the backend server (separate repository)
+# The backend should be running on http://localhost:8080
+
+# Step 6: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
+
+## Backend API
+
+This project uses a backend API for all data and AI agent interactions. The backend handles:
+
+- Dashboard KPI data
+- Cell status and performance metrics
+- Time-series analytics
+- AI agent chat via AWS Bedrock
+
+### API Base URL
+- **Development**: `http://localhost:8080`
+- **Production**: Configure via `VITE_API_URL` environment variable
+
+Make sure the backend server is running before starting the frontend application.
 
 **Edit a file directly in GitHub**
 

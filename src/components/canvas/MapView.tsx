@@ -66,7 +66,7 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || map.current || cells.length === 0) return;
+    if (!mapContainer.current || map.current || !Array.isArray(cells) || cells.length === 0) return;
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -266,7 +266,7 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
         )}
 
         {/* Cell Status Legend */}
-        {!heatmapData && (
+        {!heatmapData && Array.isArray(cells) && cells.length > 0 && (
           <Card className="absolute bottom-6 left-6 border-border/50 bg-card/90 p-4 backdrop-blur">
             <h3 className="mb-3 text-sm font-semibold text-foreground">Cell Status</h3>
             <div className="space-y-2">
@@ -291,7 +291,7 @@ export const MapView = ({ heatmapData, kpiName }: MapViewProps) => {
           <p className="text-sm font-medium text-secondary">
             {heatmapData
               ? `${heatmapData.features.length} data points • Click to view details`
-              : `${cells.length} cells displayed • Click any cell for details`}
+              : `${Array.isArray(cells) ? cells.length : 0} cells displayed • Click any cell for details`}
           </p>
         </Card>
       </div>
