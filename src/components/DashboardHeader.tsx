@@ -3,6 +3,7 @@ import { Activity, AlertTriangle, TrendingUp, Radio } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { getDashboardKPIs, type DashboardKPIs as KPIData } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import gomlLogo from "@/assets/goml-logo-white.svg";
 
 interface KPICardProps {
   title: string;
@@ -84,9 +85,7 @@ export const DashboardHeader = () => {
     <header className="border-b border-border bg-gradient-to-r from-background via-card to-background px-6 py-4">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-glow shadow-lg">
-            <Radio className="h-6 w-6 text-primary-foreground" />
-          </div>
+          <img src={gomlLogo} alt="GoML Logo" className="h-12 w-12" />
           <div>
             <h1 className="text-2xl font-bold text-foreground">RAN Co-pilot</h1>
             <p className="text-sm text-muted-foreground">Network Operations Center</p>
