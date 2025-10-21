@@ -87,7 +87,7 @@ export const DashboardHeader = () => {
         <div className="flex items-center gap-3">
           <img src={gomlLogo} alt="GoML Logo" className="h-8 w-auto" />
           <div>
-            <h1 className="text-2xl font-bold text-foreground">RAN Co-pilot</h1>
+            <h1 className="text-2xl font-bold text-foreground">NetworkMatic RANflow</h1>
             <p className="text-sm text-muted-foreground">Network Operations Center</p>
           </div>
         </div>
