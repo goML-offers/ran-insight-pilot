@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
     host: "0.0.0.0",
     port: 8081,
     allowedHosts: ["hackathon-alb-535451099.ap-south-1.elb.amazonaws.com",
-      "localhost"
+      "localhost", "ranflow-app.goml.io", "::"
     ]
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
